@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HyperOS Web</title>
+
+<style>
+  :root {
+    --bg-wallpaper: url('https://raw.githubusercontent.com/Nizaax29/iko/refs/heads/main/images%20(9).jpeg');
+    --icon-msg: url('https://raw.githubusercontent.com/Nizaax29/iko/refs/heads/main/system_messages.png');
+    --icon-calc: url('https://raw.githubusercontent.com/Nizaax29/iko/refs/heads/main/system_calculator.png');
+    --icon-set: url('https://raw.githubusercontent.com/Nizaax29/iko/refs/heads/main/system_settings.png');
+    
+    --app-bg: #f2f2f7;
+    --text-color: #000000;
+    --anim-speed: 0.4s;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .dark-mode {
+    --app-bg: #000000;
+    --text-color: #ffffff;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; margin: 0; padding: 0; }
+
+  body {
+    height: 100vh; background: #111;
+    display: flex; justify-content: center; align-items: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  /* CHASSIS DU TÉLÉPHONE */
+  .phone {
+    width: 320px; height: 680px;
+    background: #000; border-radius: 50px;
+    border: 12px solid #222; position: relative;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.8), inset 0 0 10px rgba(255,255,255,0.1);
+  }
+
+  .screen {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 38px; overflow: hidden; background: #000;
+  }
+
+  .wallpaper {
+    position: absolute; inset: 0;
+    background: var(--bg-wallpaper) center/cover no-repeat;
+    transition: transform var(--anim-speed) var(--ease), filter var(--anim-speed);
+    z-index: 1;
+  }
+
+  .status-bar {
+    position: absolute; top: 0; width: 100%; height: 44px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 25px; color: white; font-size: 13px; font-weight: 600;
+    z-index: 500; cursor: pointer; text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+
+  .homescreen {
+    position: absolute; inset: 0; padding: 70px 20px;
+    z-index: 10; transition: transform var(--anim-speed) var(--ease), opacity var(--anim-speed);
+  }
+
+  .apps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px 10px; }
+  .app-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .app-label { color: white; font-size: 11px; font-weight: 500; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+
+  .app-icon {
+    width: 54px; height: 54px; border-radius: 14px;
+    background-size: cover; background-position: center;
+    cursor: pointer; transition: transform 0.2s ease;
+  }
+  .app-icon:active { transform: scale(0.85); filter: brightness(0.8); }
+
+  .dock {
+    position: absolute; bottom: 20px; left: 15px; right: 15px;
+    background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+    border-radius: 28px; padding: 15px; display: flex; justify-content: space-around;
+    z-index: 20; border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* MOTEUR D'ANIMATION */
+  .app-window {
+    position: absolute; background: var(--app-bg); color: var(--text-color);
+    z-index: 100; overflow: hidden; opacity: 0; pointer-events: none;
+    will-change: top, left, width, height, border-radius, opacity;
+  }
+
+  .app-window.active { opacity: 1; pointer-events: auto; }
+
+  .app-content {
+    width: 320px; height: 680px; display: flex; flex-direction: column;
+    opacity: 0; transform: scale(0.95); transition: opacity 0.2s, transform var(--anim-speed) var(--ease);
+  }
+
+  .app-window.active .app-content { opacity: 1; transform: scale(1); }
+
+  /* HOME BAR */
+  .home-bar-area {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 35px;
+    display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 1000;
+  }
+  .home-bar { width: 130px; height: 5px; background: rgba(0,0,0,0.3); border-radius: 10px; transition: 0.2s; }
+  .dark-mode .home-bar { background: rgba(255,255,255,0.4); }
+  .home-bar-area:active .home-bar { transform: scaleX(0.9); background: #888; }
+
+  /* CENTRE DE CONTRÔLE */
+  .cc {
+    position: absolute; top: -100%; left: 0; right: 0; height: 100%;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(35px); -webkit-backdrop-filter: blur(35px);
+    z-index: 600; transition: top 0.4s var(--ease); padding: 70px 20px 20px; color: white;
+  }
+  .cc.show { top: 0; }
+  .cc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+  .cc-btn {
+    background: rgba(255,255,255,0.15); border-radius: 20px; padding: 15px;
+    display: flex; flex-direction: column; gap: 10px; cursor: pointer; font-weight: 500; transition: 0.2s;
+  }
+  .cc-btn.active { background: #007aff; }
+  .cc-icon { width: 35px; height: 35px; background: rgba(0,0,0,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+
+  /* UI PARAMÈTRES */
+  .set-list { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+  .set-item {
+    background: #fff; border-radius: 15px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; font-weight: 500; box-shadow: 0 2px 10px rgba(0,0,0,0.02); cursor: pointer;
+  }
+  .dark-mode .set-item { background: #1c1c1e; }
+  .set-sub { display: none; padding: 0 20px; font-size: 14px; color: #666; }
+  .dark-mode .set-sub { color: #aaa; }
+  select { padding: 8px; border-radius: 8px; border: 1px solid #ccc; background: transparent; color: inherit; font-weight: bold; }
+
+  /* CALCULATRICE */
+  .calc-res { flex: 1; display: flex; align-items: flex-end; justify-content: flex-end; padding: 30px 25px; font-size: 4rem; font-weight: 200; overflow: hidden; }
+  .calc-keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px 20px 45px; }
+  .k { border: none; height: 60px; border-radius: 50%; font-size: 1.5rem; background: #e5e5ea; cursor: pointer; transition: 0.2s; color: #000; }
+  .k:active { filter: brightness(0.8); }
+  .k.orange { background: #ff9f0a; color: white; }
+  .k.gray { background: #d1d1d6; }
+  .dark-mode .k { background: #333; color: white; }
+  .dark-mode .k.gray { background: #a5a5a5; color: black; }
+
+  /* CAMÉRA */
+  .cam-app { background: #000 !important; color: white; display: flex; flex-direction: column; justify-content: space-between; }
+  .cam-viewfinder { flex: 1; background: #111; margin: 44px 10px 10px; border-radius: 20px; display: flex; justify-content: center; align-items: center; border: 1px solid #333; position: relative; overflow: hidden; }
+  .cam-focus { width: 60px; height: 60px; border: 1px solid rgba(255,204,0,0.8); position: absolute; }
+  .cam-controls { height: 130px; display: flex; justify-content: center; align-items: center; padding-bottom: 20px; position: relative; }
+  .shutter-btn { width: 70px; height: 70px; background: white; border-radius: 50%; border: 4px solid #000; outline: 3px solid white; cursor: pointer; transition: transform 0.1s; }
+  .shutter-btn:active { transform: scale(0.9); background: #eee; }
+
+</style>
+</head>
+<body id="b">
+
+<div class="phone">
+  <div class="screen" id="mainScreen">
+    
+    <div class="wallpaper" id="wp"></div>
+    
+    <div class="status-bar" onclick="toggleCC()">
+      <span id="clock">--:--</span>
+      <span id="battery">100% 🔋</span>
+    </div>
+
+    <div class="homescreen" id="hs">
+      <div class="apps-grid">
+        <div class="app-wrap"><div class="app-icon" data-app="msg" style="background-image: var(--icon-msg)"></div><span class="app-label">Messages</span></div>
+        <div class="app-wrap"><div class="app-icon" data-app="calc" style="background-image: var(--icon-calc)"></div><span class="app-label">Calculatrice</span></div>
+        <div class="app-wrap"><div class="app-icon" data-app="set" style="background-image: var(--icon-set)"></div><span class="app-label">Paramètres</span></div>
+      </div>
+    </div>
+
+    <div class="dock">
+      <div class="app-icon" data-app="msg" style="background-image: var(--icon-msg)"></div>
+      <div class="app-icon" data-app="calc" style="background-image: var(--icon-calc)"></div>
+      <div class="app-icon" data-app="set" style="background-image: var(--icon-set)"></div>
+      <div class="app-icon" data-app="cam" style="background: linear-gradient(135deg, #00f2fe, #4facfe);"></div>
+    </div>
+
+    <div class="cc" id="cc">
+      <h2 style="margin-bottom: 20px;">Centre de Contrôle</h2>
+      <div class="cc-grid">
+        <div class="cc-btn active" onclick="this.classList.toggle('active')"><div class="cc-icon">📶</div>WLAN</div>
+        <div class="cc-btn" onclick="this.classList.toggle('active')"><div class="cc-icon">🛜</div>Bluetooth</div>
+        <div class="cc-btn" id="btn-theme" onclick="toggleTheme(this)"><div class="cc-icon">🌙</div>Mode Sombre</div>
+        <div class="cc-btn" onclick="toggleCC()"><div class="cc-icon">⬇️</div>Fermer</div>
+      </div>
+    </div>
+
+    <div class="app-window" id="win-set">
+      <div class="app-content">
+          <h1 style="padding: 60px 20px 10px;">Paramètres</h1>
+          
+          <div class="set-list">
+              <div class="set-item" onclick="toggleSub('sub-launcher')">
+                  <span>🚀 Launcher</span>
+                  <span style="color:#888;">></span>
+              </div>
+              <div class="set-sub" id="sub-launcher">
+                  <p style="margin-bottom:10px;">Vitesse d'animation :</p>
+                  <select onchange="changeSpeed(this.value)">
+                      <option value="0.6s">Relaxed (Lent)</option>
+                      <option value="0.4s" selected>Classic (Standard)</option>
+                      <option value="0.25s">Fast (Éclair)</option>
+                  </select>
+              </div>
+
+              <div class="set-item" onclick="toggleSub('sub-about')">
+                  <span>ℹ️ About</span>
+                  <span style="color:#888;">></span>
+              </div>
+              <div class="set-sub" id="sub-about" style="text-align: center; padding: 30px 20px;">
+                  <h2 style="margin-bottom: 10px;">HyperOS Web</h2>
+                  <p style="font-size: 20px; font-weight: bold; color: #007aff;">Crédits : VICO</p>
+              </div>
+          </div>
+          
+          <div class="home-bar-area" onclick="closeApp('set')"><div class="home-bar"></div></div>
+      </div>
+    </div>
+
+    <div class="app-window" id="win-calc">
+      <div class="app-content">
+          <div class="calc-res" id="calc-display">0</div>
+          <div class="calc-keys">
+              <button class="k gray" onclick="cClear()">C</button><button class="k gray" onclick="cSign()">+/-</button><button class="k gray" onclick="cPct()">%</button><button class="k orange" onclick="cOp('/')">÷</button>
+              <button class="k" onclick="cIn('7')">7</button><button class="k" onclick="cIn('8')">8</button><button class="k" onclick="cIn('9')">9</button><button class="k orange" onclick="cOp('*')">×</button>
+              <button class="k" onclick="cIn('4')">4</button><button class="k" onclick="cIn('5')">5</button><button class="k" onclick="cIn('6')">6</button><button class="k orange" onclick="cOp('-')">-</button>
+              <button class="k" onclick="cIn('1')">1</button><button class="k" onclick="cIn('2')">2</button><button class="k" onclick="cIn('3')">3</button><button class="k orange" onclick="cOp('+')">+</button>
+              <button class="k" onclick="cIn('0')" style="grid-column: span 2; border-radius: 30px; text-align: left; padding-left: 25px;">0</button><button class="k" onclick="cIn('.')">.</button><button class="k orange" onclick="cRes()">=</button>
+          </div>
+          <div class="home-bar-area" onclick="closeApp('calc')"><div class="home-bar"></div></div>
+      </div>
+    </div>
+
+    <div class="app-window" id="win-cam">
+      <div class="app-content cam-app">
+          <div class="cam-viewfinder">
+              <span style="color: rgba(255,255,255,0.3); font-size: 12px; letter-spacing: 2px;">CAPTEUR OPTIQUE</span>
+              <div class="cam-focus"></div>
+          </div>
+          <div class="cam-controls">
+              <div class="shutter-btn" onclick="flashCam()"></div>
+          </div>
+          <div class="home-bar-area" onclick="closeApp('cam')"><div class="home-bar" style="background:white"></div></div>
+      </div>
+    </div>
+
+    <div class="app-window" id="win-msg">
+      <div class="app-content">
+          <h1 style="padding: 60px 20px 20px;">Messages</h1>
+          <p style="padding: 20px; color: #888;">Aucun message récent.</p>
+          <div class="home-bar-area" onclick="closeApp('msg')"><div class="home-bar"></div></div>
+      </div>
+    </div>
+
+  </div> </div>
+
+<script>
+// HORLOGE
+setInterval(() => {
+    const d = new Date();
+    document.getElementById('clock').innerText = d.getHours().toString().padStart(2,'0')+":"+d.getMinutes().toString().padStart(2,'0');
+}, 1000);
+
+// CENTRE DE CONTRÔLE ET PARAMÈTRES
+function toggleCC() { document.getElementById('cc').classList.toggle('show'); }
+function changeSpeed(val) { document.documentElement.style.setProperty('--anim-speed', val); }
+function toggleSub(id) { 
+    const el = document.getElementById(id);
+    el.style.display = (el.style.display === 'block') ? 'none' : 'block';
+}
+
+// DARK MODE (FIXÉ)
+function toggleTheme(btn) {
+    document.body.classList.toggle('dark-mode');
+    btn.classList.toggle('active');
+}
+
+// CALCULATRICE (FONCTIONNELLE)
+let cVal = '0', cOperation = null, cPrev = null;
+function uS() { document.getElementById('calc-display').innerText = cVal; }
+function cIn(num) {
+    if (cVal === '0' && num !== '.') cVal = num;
+    else cVal += num;
+    uS();
+}
+function cClear() { cVal = '0'; cOperation = null; cPrev = null; uS(); }
+function cSign() { cVal = (parseFloat(cVal) * -1).toString(); uS(); }
+function cPct() { cVal = (parseFloat(cVal) / 100).toString(); uS(); }
+function cOp(op) { cPrev = cVal; cVal = '0'; cOperation = op; }
+function cRes() {
+    if(!cOperation || !cPrev) return;
+    try {
+        cVal = eval(cPrev + cOperation + cVal).toString();
+        cOperation = null; cPrev = null;
+        uS();
+    } catch(e) { cVal = "Erreur"; uS(); }
+}
+
+// CAMÉRA (FLASH EFFECT)
+function flashCam() {
+    const vf = document.querySelector('.cam-viewfinder');
+    vf.style.background = 'white';
+    setTimeout(() => vf.style.background = '#111', 100);
+}
+
+// MOTEUR D'ANIMATION
+let appStates = {}; 
+let lastClickedIcon = {};
+
+document.querySelectorAll('.app-icon').forEach(icon => {
+    icon.onclick = (e) => {
+        const id = icon.dataset.app;
+        const win = document.getElementById('win-' + id);
+        lastClickedIcon[id] = e.target;
+        
+        if (appStates[id] === 'closing') { appStates[id] = 'opening'; }
+
+        const rect = e.target.getBoundingClientRect();
+        const screenRect = document.getElementById('mainScreen').getBoundingClientRect();
+        
+        const startLeft = rect.left - screenRect.left;
+        const startTop = rect.top - screenRect.top;
+
+        win.style.transition = 'none';
+        win.style.left = startLeft + "px";
+        win.style.top = startTop + "px";
+        win.style.width = rect.width + "px";
+        win.style.height = rect.height + "px";
+        win.style.borderRadius = "14px";
+        win.style.opacity = "1";
+        win.style.pointerEvents = "auto";
+
+        requestAnimationFrame(() => {
+            win.style.transition = `all var(--anim-speed) var(--ease)`;
+            win.classList.add('active');
+            win.style.left = "0px";
+            win.style.top = "0px";
+            win.style.width = "100%";
+            win.style.height = "100%";
+            win.style.borderRadius = "38px";
+            
+            document.getElementById('wp').style.transform = "scale(1.1)";
+            document.getElementById('wp').style.filter = "blur(10px)";
+            document.getElementById('hs').style.transform = "scale(0.9)";
+            document.getElementById('hs').style.opacity = "0";
+        });
+
+        appStates[id] = 'open';
+    };
+});
+
+function closeApp(id) {
+    const win = document.getElementById('win-' + id);
+    const icon = lastClickedIcon[id];
+    if(!icon) return;
+
+    const rect = icon.getBoundingClientRect();
+    const screenRect = document.getElementById('mainScreen').getBoundingClientRect();
+
+    appStates[id] = 'closing';
+    win.classList.remove('active');
+
+    win.style.left = (rect.left - screenRect.left) + "px";
+    win.style.top = (rect.top - screenRect.top) + "px";
+    win.style.width = rect.width + "px";
+    win.style.height = rect.height + "px";
+    win.style.borderRadius = "14px";
+    
+    document.getElementById('wp').style.transform = "scale(1)";
+    document.getElementById('wp').style.filter = "blur(0px)";
+    document.getElementById('hs').style.transform = "scale(1)";
+    document.getElementById('hs').style.opacity = "1";
+
+    const speedMs = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--anim-speed')) * 1000;
+
+    setTimeout(() => {
+        if (appStates[id] === 'closing') {
+            win.style.opacity = "0";
+            win.style.pointerEvents = "none";
+            appStates[id] = 'closed';
+        }
+    }, speedMs);
+}
+</script>
+
+</body>
+</html>
